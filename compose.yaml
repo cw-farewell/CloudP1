@@ -1,0 +1,29 @@
+# 本地先用 Compose 理解应用和 Redis 的依赖关系，后续同一镜像可部署到 K8s。
+services:
+  api:
+    build: .
+    environment:
+      # Compose 服务名可通过内部 DNS 解析，不需要写 Redis 容器 IP。
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      # 命名卷让容器重建后 Redis 数据仍保留在本机。
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  redis-data:
