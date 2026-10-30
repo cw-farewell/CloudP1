@@ -1,0 +1,85 @@
+# ConfigMap 放非敏感配置；REDIS_URL 使用 Kubernetes Service DNS，而不是某个 Pod IP。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: todo-api-config
+  namespace: cloudp1
+data:
+  REDIS_URL: redis://redis:6379/0
+---
+# Deployment 描述期望状态。Kubernetes 控制器会持续让实际 Pod 数量接近 replicas。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-api
+  namespace: cloudp1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todo-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # 发布期间保留可用副本，并限制额外创建的 Pod 数量。
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: todo-api
+    spec:
+      containers:
+        - name: api
+          # 本地 Docker Desktop 集群可直接使用本机 Docker 构建的镜像。
+          # 若换成远端集群，需改成可访问的镜像仓库地址并推送镜像。
+          image: cloudp1-api:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: todo-api-config
+          # 存活探针只检查 API 进程；失败时 kubelet 重启容器。
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          # 就绪探针也检查 Redis；未就绪的 Pod 不会接收 Service 流量。
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+# Service 为两个 API Pod 提供单一集群内入口，并按标签选择就绪的后端 Pod。
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-api
+  namespace: cloudp1
+spec:
+  type: NodePort
+  selector:
+    app: todo-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      # NodePort 便于本地 Docker Desktop Kubernetes 访问；云上通常改用 Ingress。
+      nodePort: 30080
