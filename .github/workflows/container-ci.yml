@@ -1,0 +1,64 @@
+# GitHub Actions：检查 Python 语法，并在默认分支把提交版本镜像发布到 GHCR。
+name: Container CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  verify:
+    name: Verify Python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile Python source
+        run: python -m compileall -q app
+
+  build-image:
+    name: Build and publish image
+    needs: verify
+    runs-on: ubuntu-latest
+    # PR 只验证构建；避免来自 fork 的 PR 得到写 GHCR 的权限。
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare lowercase image name and metadata
+        id: image
+        shell: bash
+        run: |
+          # GHCR 镜像路径必须小写；owner 通常是 GitHub 用户名或组织名。
+          echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          # GitHub 自动提供的短期工作流令牌，不需要手动创建 PAT。
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push commit-tagged image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.image.outputs.name }}:${{ steps.image.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
