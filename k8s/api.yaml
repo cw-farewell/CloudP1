@@ -31,9 +31,9 @@ spec:
     spec:
       containers:
         - name: api
-          # 本地 Docker Desktop 集群可直接使用本机 Docker 构建的镜像。
-          # 若换成远端集群，需改成可访问的镜像仓库地址并推送镜像。
-          image: cloudp1-api:dev
+          # 使用 GHCR 上按 Git commit 前 12 位标记的镜像，便于追踪和回滚。
+          # 更新版本时，将 tag 替换为对应成功构建的 commit SHA 前 12 位。
+          image: ghcr.io/cw-farewell/cloudp1:7a2368f14848
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

@@ -28,7 +28,57 @@ Compose 适合单机启动；Kubernetes 则通过声明式配置持续维护期�
 docker compose build api
 ```
 
-Compose 构建出的镜像名是 `cloudp1-api`。Docker Desktop Kubernetes 通常与本机 Docker 镜像共享镜像存储；如果 Pod 报 `ImagePullBackOff`，检查 `kubectl describe pod`。远端集群必须将镜像推送到集群可访问的 Registry，再把 `api.yaml` 的镜像名改为完整仓库地址。
+Compose 构建出的镜像名是 `cloudp1-api`。Docker Desktop Kubernetes 通常与本机 Docker 镜像共享镜像存储；如果 Pod 报 `ImagePullBackOff`，检查 `kubectl describe pod`。下面的 GHCR 部署练习会改用 GitHub Actions 发布的镜像。
+
+## 从 GHCR 部署指定版本（本地 Kubernetes）
+
+这一步解决“CI 构建出来的镜像如何由 Kubernetes 实际运行”，并验证镜像版本可追踪。先在 GitHub 仓库 **Packages → cloudp1** 页面确认镜像的完整地址及提交 SHA 标签。工作流生成的地址格式是 `ghcr.io/<小写owner>/<小写repo>:<12位commit-sha>`。
+
+### 推荐方式：将 GHCR 包设为 Public
+
+对公开演示项目，公开容器包最简单，Kubernetes 无需认证即可拉取：
+
+1. 在 GitHub 的 Packages 中打开 `cloudp1`，进入 **Package settings → Change visibility → Public**。只在你确实希望镜像公开时这样设置。
+2. 用本次 Actions run 的提交 SHA 组成镜像地址，例如 `ghcr.io/myname/cloudp1:0123456789ab`（用真实 owner 和标签替换示例）。
+3. 确保本机 Docker Desktop Kubernetes 已启用。然后执行：
+
+```powershell
+$image = "ghcr.io/<小写owner>/<小写repo>:<提交SHA标签>"
+kubectl set image deployment/todo-api api=$image -n cloudp1
+kubectl rollout status deployment/todo-api -n cloudp1 --timeout=180s
+kubectl get pods -n cloudp1
+```
+
+4. 两个 API Pod 都为 `1/1 Running` 后，用端口转发验证：
+
+```powershell
+kubectl port-forward service/todo-api 8000:8000 -n cloudp1
+```
+
+另开一个窗口访问 `http://localhost:8000/healthz` 或 `/docs`。用完后在运行端口转发的窗口按 `Ctrl+C`。
+
+### 如果 GHCR 包保持 Private
+
+需要在本机创建只读权限的 GitHub token（classic PAT，勾选 `read:packages`；若组织启用 SSO，还需按组织流程授权），再创建 namespace 级 `imagePullSecret`：
+
+```powershell
+kubectl create secret docker-registry ghcr-pull `
+  --namespace cloudp1 `
+  --docker-server=ghcr.io `
+  --docker-username=<GitHub用户名> `
+  --docker-password=<只读token>
+```
+
+不要把 token 放进 shell 历史、仓库文件、截图或聊天。更安全的做法是在 PowerShell 提示时读取密钥后通过安全的 Secret 管理流程创建。然后编辑 Deployment 的 Pod template，在 `spec.template.spec` 下添加：
+
+```yaml
+imagePullSecrets:
+  - name: ghcr-pull
+```
+
+之后再执行上面的 `kubectl set image` 和 rollout 检查。若看到 `ImagePullBackOff`，用 `kubectl describe pod -n cloudp1 -l app=todo-api` 查看 Events，核对镜像地址、tag 和拉取权限。
+
+> 通过 `kubectl set image` 做的版本变更保存在集群中，不会自动改仓库里的 `k8s/api.yaml`。后续 GitOps 阶段再把镜像 tag 写回声明式清单，避免集群状态和 Git 配置漂移。
 
 ## 部署
 
