@@ -1,0 +1,5 @@
+﻿capture_time : 2026-11-12 13:14:35 +08:00
+host         : A111
+context      : docker-desktop
+client       : Client Version: v1.36.1 Kustomize Version: v5.8.1
+note         : 05-events.txt 的 34m/33m 为相对本采集时刻的时间
