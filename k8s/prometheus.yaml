@@ -1,0 +1,105 @@
+# 教学用 Prometheus：集群内抓取 API Service 的 /metrics。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: cloudp1
+data:
+  prometheus.yml: |
+    global:
+      # 每 15 秒采集一次，便于观察且适合本地练习。
+      scrape_interval: 15s
+    rule_files:
+      - /etc/prometheus/alerts.yml
+    scrape_configs:
+      - job_name: todo-api
+        metrics_path: /metrics
+        static_configs:
+          # 使用 Kubernetes Service DNS；Service 会把请求转发给就绪的 API Pod。
+          - targets: ["todo-api:8000"]
+  alerts.yml: |
+    groups:
+      - name: todo-api
+        rules:
+          # 教学 SLO：最近 5 分钟抓取目标至少 99% 可用（仅代表监控采集可达）。
+          - alert: TodoApiScrapeAvailabilityLow
+            expr: avg_over_time(up{job="todo-api"}[5m]) < 0.99
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Todo API 指标采集可用率低于 99%"
+              description: "Prometheus 最近 5 分钟无法稳定抓取 todo-api。"
+          # 有请求样本且 5xx 比例超过 5% 持续 2 分钟时告警。
+          - alert: TodoApiHigh5xxRate
+            expr: |
+              sum(rate(todo_http_requests_total{job="todo-api",status=~"5.."}[5m]))
+              /
+              clamp_min(sum(rate(todo_http_requests_total{job="todo-api"}[5m])), 0.001)
+              > 0.05
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Todo API 5xx 错误比例超过 5%"
+              description: "最近 5 分钟请求中 5xx 比例超过 5%，并持续 2 分钟。"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: cloudp1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.5.0
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+          ports:
+            - name: web
+              containerPort: 9090
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus/prometheus.yml
+              subPath: prometheus.yml
+              readOnly: true
+            - name: config
+              mountPath: /etc/prometheus/alerts.yml
+              subPath: alerts.yml
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: cloudp1
+spec:
+  # 仅集群内可访问；本机通过 kubectl port-forward 打开界面。
+  type: ClusterIP
+  selector:
+    app: prometheus
+  ports:
+    - name: web
+      port: 9090
+      targetPort: web

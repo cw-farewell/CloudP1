@@ -1,0 +1,142 @@
+# Grafana 教学配置：预置 Prometheus 数据源和 API 请求速率面板。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-provisioning
+  namespace: cloudp1
+data:
+  datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        # 面板 JSON 中也使用此 UID，确保面板能找到这个数据源。
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus:9090
+        isDefault: true
+  dashboard-provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: CloudP1
+        orgId: 1
+        folder: CloudP1
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards
+  dashboard.json: |
+    {
+      "title": "CloudP1 API",
+      "uid": "cloudp1-api",
+      "schemaVersion": 39,
+      "version": 2,
+      "refresh": "15s",
+      "time": {"from": "now-1h", "to": "now"},
+      "panels": [
+        {
+          "id": 1,
+          "title": "API 请求速率（每秒）",
+          "type": "timeseries",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 9, "w": 24, "x": 0, "y": 0},
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (path, status) (rate(todo_http_requests_total{job=\"todo-api\"}[5m]))",
+              "legendFormat": "{{path}} status={{status}}",
+              "range": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "待办业务 API 请求延迟 P95（秒）",
+          "description": "按 HTTP 方法和固定路由显示过去 5 分钟请求延迟的 P95；排除监控与健康检查路由。Histogram 桶边界会影响分位数估算精度。",
+          "type": "timeseries",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 9, "w": 24, "x": 0, "y": 9},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "min": 0
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "histogram_quantile(0.95, sum by (le, method, path) (rate(todo_http_request_duration_seconds_bucket{job=\"todo-api\",path!~\"/metrics|/healthz|/readyz\"}[5m])))",
+              "legendFormat": "{{method}} {{path}} P95",
+              "range": true
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: cloudp1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:12.1.1
+          ports:
+            - name: web
+              containerPort: 3000
+          env:
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: Viewer
+            - name: GF_AUTH_DISABLE_LOGIN_FORM
+              value: "true"
+          volumeMounts:
+            - name: provisioning
+              mountPath: /etc/grafana/provisioning/datasources/datasource.yaml
+              subPath: datasource.yaml
+              readOnly: true
+            - name: provisioning
+              mountPath: /etc/grafana/provisioning/dashboards/dashboard-provider.yaml
+              subPath: dashboard-provider.yaml
+              readOnly: true
+            - name: provisioning
+              mountPath: /var/lib/grafana/dashboards/cloudp1-api.json
+              subPath: dashboard.json
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: provisioning
+          configMap:
+            name: grafana-provisioning
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: cloudp1
+spec:
+  type: ClusterIP
+  selector:
+    app: grafana
+  ports:
+    - name: web
+      port: 3000
+      targetPort: web

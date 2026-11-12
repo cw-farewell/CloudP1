@@ -1,0 +1,118 @@
+# 阶段记录：Prometheus、Grafana 与告警演练
+
+## 目标
+
+把 API 已有的 `/metrics` 接入 Prometheus，使用 Grafana 展示请求指标，并验证告警规则能发现采集故障、在恢复后解除。
+
+## 组件关系
+
+```text
+API 中间件记录请求指标
+  -> /metrics 暴露 Prometheus 文本格式
+  -> Prometheus 每 15 秒抓取 todo-api:8000/metrics 并保存时间序列
+  -> Grafana 使用 Prometheus 数据源查询并展示面板
+  -> Prometheus 根据规则评估告警状态
+```
+
+- `k8s/prometheus.yaml`：Prometheus 配置、Deployment、Service，以及两条告警规则。
+- `k8s/grafana.yaml`：Grafana 数据源、仪表盘配置、Deployment 和 Service。
+- `app/main.py`：定义请求计数器和耗时 Histogram，并由 HTTP 中间件更新；`/metrics` 调用 `generate_latest()` 输出。
+- 本机访问 UI 使用 `kubectl port-forward`；Prometheus 抓 API 使用集群内 Service DNS，两条网络路径不同。
+
+## 本阶段完成
+
+1. Prometheus 抓取 `todo-api:8000/metrics`，target 状态为 `UP`，PromQL 查询到 `todo_http_requests_total`。
+2. Grafana 连接 Prometheus，并显示按 path/status 汇总的 API 请求速率面板。
+3. Prometheus 加载 `TodoApiScrapeAvailabilityLow` 与 `TodoApiHigh5xxRate`，规则组和规则健康状态正常。
+4. 临时改动 API Service selector 制造采集失败；告警进入 `firing`。恢复为 `app: todo-api` 后，Endpoints 恢复，告警在时间窗口重新评估后变为 `inactive`。
+
+## 遇到的问题与处理
+
+### Grafana 面板空白
+
+数据源和面板引用的 UID 不一致。为 Prometheus 数据源显式设置 UID `prometheus`，与 dashboard JSON 一致后面板显示数据。
+
+### Prometheus 因规则文件挂载失败
+
+日志报 `/etc/prometheus/alerts.yml` 是目录。原因是整个 ConfigMap 目录挂载和单文件挂载产生路径冲突。改为用 `subPath` 分别挂载 `prometheus.yml` 与 `alerts.yml` 后，Pod 成功启动并加载规则。
+
+### 端口转发拒绝连接
+
+`kubectl port-forward` 找到了 Pod，但容器内没有监听 9090。查看 Pod、Service Endpoint 和 Prometheus 日志后发现 Pod 启动失败；这不是本机端口号错误。
+
+### kubectl 连接与 Namespace 错误
+
+Docker Desktop Kubernetes 关闭时，kubectl 无法访问 API Server。集群恢复后若 `cloudp1` Namespace 不存在，需要先创建 Namespace，再部署 Redis、API、Prometheus 和 Grafana。启动集群本身不会自动恢复 Namespace 资源。
+
+### PowerShell patch JSON 引号问题
+
+多种内联 JSON 写法传给 `kubectl patch` 后引号丢失。通过检查 Service 的 `spec.selector` 发现实际配置仍然是 `app: todo-api`。本次演练使用 `kubectl edit` 修改 selector，并在恢复后确认 Endpoints 有两个 API 后端。
+
+### 告警恢复延迟
+
+可用性表达式使用 5 分钟窗口，抓取间隔 15 秒，并有 `for: 1m`。恢复后历史窗口仍含 `up=0` 样本，所以告警不会立即解除；等窗口滚动并重新评估后转为 `inactive`。
+
+## 告警与 SLO 边界
+
+- `TodoApiScrapeAvailabilityLow` 的 `up` 衡量 Prometheus 抓取 `/metrics` 是否成功，不等于用户完整业务可用。
+- `TodoApiHigh5xxRate` 衡量当前观测到的 5xx 比例；低流量下比例可能不稳定。
+- 99%、5%、5 分钟和持续时间是教学阈值，不是业务承诺或正式 SLO。
+- 当前没有配置 Alertmanager 和通知接收器，告警只在 Prometheus 中可见。
+- API 指标能正常抓取时，Redis 或特定业务接口仍可能失败；后续可用真实业务探测补足。
+
+## 复现与验证命令
+
+部署（Docker Desktop Kubernetes 已启动）：
+
+```powershell
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/redis.yaml
+kubectl apply -f k8s/api.yaml
+kubectl apply -f k8s/prometheus.yaml
+kubectl apply -f k8s/grafana.yaml
+kubectl get pods -n cloudp1
+```
+
+访问 Prometheus：
+
+```powershell
+kubectl port-forward service/prometheus 9090:9090 -n cloudp1
+```
+
+另一个终端可查询规则：
+
+```powershell
+(Invoke-RestMethod http://localhost:9090/api/v1/rules).data |
+  ConvertTo-Json -Depth 8
+```
+
+访问 Grafana（另开终端）：
+
+```powershell
+kubectl port-forward service/grafana 3000:3000 -n cloudp1
+```
+
+浏览器打开 `http://localhost:3000`，进入 CloudP1 文件夹查看仪表盘。故障演练结束后，必须确认 Service selector 为 `app: todo-api`，并验证：
+
+```powershell
+kubectl get service todo-api -n cloudp1 -o yaml
+kubectl get endpoints todo-api -n cloudp1
+```
+
+## 复盘闭环
+
+故障演练的预检、注入、观察、强制恢复和复盘模板见 [runbook-alert-drill.md](runbook-alert-drill.md)。
+
+- **问题：**应用指标尚无持续采集、可视化和故障告警。
+- **依据：**源码指标定义、Prometheus target、PromQL 结果、Grafana 面板、规则 API、Pod/Service 状态和日志。
+- **变更：**新增 Prometheus 与 Grafana 清单、数据源/仪表盘及告警规则。
+- **故障：**面板 UID 不一致、规则文件挂载冲突、API Server 暂不可用、selector patch 引号失败。
+- **根因与修复：**记录在上方问题列表；以服务状态、Endpoint、target 和规则状态确认修复，不以命令成功作为唯一证据。
+- **结果：**故障期间告警 `firing`；恢复后 Endpoints 重新包含两个 API Pod，规则最终 `inactive`。
+- **后续行动：**考虑增加端到端业务探测、为延迟指标设计面板与目标；只有确定需要发送通知和接收渠道后再部署 Alertmanager。
+
+## 理解检查
+
+1. `up=1` 能证明什么，不能证明什么？
+2. 为什么告警条件恢复后还要等一段时间才变为 `inactive`？
+3. `kubectl port-forward` 的失败为什么需要同时检查 Pod 和 Service Endpoint？
