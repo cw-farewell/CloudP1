@@ -33,7 +33,7 @@ spec:
         - name: api
           # 使用 GHCR 上按 Git commit 前 12 位标记的镜像，便于追踪和回滚。
           # 更新版本时，将 tag 替换为对应成功构建的 commit SHA 前 12 位。
-          image: ghcr.io/cw-farewell/cloudp1:7a2368f14848
+          image: ghcr.io/cw-farewell/cloudp1:77481d1fab6e
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
