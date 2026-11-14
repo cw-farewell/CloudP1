@@ -1,0 +1,27 @@
+对/healthz,/readyz,/post接口访问，执行时间2026-11-13 15:00
+PS C:\Users\cw.a111>Invoke-RestMethod http://localhost:8000/healthz
+
+status
+------
+alive
+
+
+PS C:\Users\cw.a111> Invoke-RestMethod http://localhost:8000/readyz
+
+status
+------
+ready
+
+
+PS C:\Users\cw.a111> Invoke-RestMethod -Method Post -Uri http://localhost:8000/todos -ContentType 'application/json' -Body '{"title":"M1 部署后验证"}'
+
+id                                   title     done
+--                                   -----     ----
+2164e81a-4ccd-406e-ad73-b6873d1c42f8 M1 ????? False
+
+
+PS C:\Users\cw.a111> Invoke-RestMethod http://localhost:8000/todos
+
+id                                   title     done
+--                                   -----     ----
+2164e81a-4ccd-406e-ad73-b6873d1c42f8 M1 ????? False

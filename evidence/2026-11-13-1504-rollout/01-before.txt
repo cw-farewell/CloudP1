@@ -1,0 +1,9 @@
+﻿deployment.apps/todo-api 
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>
+
+
+        image: ghcr.io/cw-farewell/cloudp1:7a2368f14848
+
+

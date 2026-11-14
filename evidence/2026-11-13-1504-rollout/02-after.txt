@@ -1,0 +1,9 @@
+﻿NAME                         READY   STATUS    RESTARTS      AGE    IP            NODE                    NOMINATED NODE   READINESS GATES
+grafana-6c8f794cbf-kckkx     1/1     Running   4 (35m ago)   3d4h   10.244.0.5    desktop-control-plane   <none>           <none>
+prometheus-54c47cc79-f7z6l   1/1     Running   4 (35m ago)   3d4h   10.244.0.4    desktop-control-plane   <none>           <none>
+redis-6b995c5c4d-5s48g       1/1     Running   4 (35m ago)   3d4h   10.244.0.2    desktop-control-plane   <none>           <none>
+todo-api-77fd4c7675-k469w    1/1     Running   0             31m    10.244.0.11   desktop-control-plane   <none>           <none>
+todo-api-77fd4c7675-rcvbx    1/1     Running   0             31m    10.244.0.10   desktop-control-plane   <none>           <none>
+NAME       ENDPOINTS                           AGE
+todo-api   10.244.0.10:8000,10.244.0.11:8000   3d4h
+ghcr.io/cw-farewell/cloudp1:77481d1fab6e
