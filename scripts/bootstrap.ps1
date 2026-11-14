@@ -62,6 +62,24 @@ function Invoke-Kubectl {
     }
 }
 
+function Get-NamespacePhase {
+    # 查询不存在的命名空间时，kubectl 会把 NotFound 写到 stderr。在
+    # $ErrorActionPreference='Stop' 下这条 stderr 会被当成终止错误，
+    # 让预检直接失败。这里临时放宽，只按退出码判断。
+    param([string]$Name)
+
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $phase = & kubectl get namespace $Name -o jsonpath='{.status.phase}' 2>$null
+        if ($LASTEXITCODE -ne 0) { return '' }
+        return (($phase -join '').Trim())
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
 $manifests = @(
     'k8s/namespace.yaml'
     'k8s/redis.yaml'
@@ -94,20 +112,16 @@ try {
     }
 
     # 命名空间若停在 Terminating，apply 会失败，必须等它消失。
-    $phase = ''
-    kubectl get namespace cloudp1 -o jsonpath='{.status.phase}' 2>$null | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        $phase = (kubectl get namespace cloudp1 -o jsonpath='{.status.phase}' 2>$null)
-    }
+    # 不存在时 Get-NamespacePhase 返回空字符串，属于正常情况。
+    $phase = Get-NamespacePhase -Name 'cloudp1'
     if ($phase -eq 'Terminating') {
         Write-Host "命名空间 cloudp1 正在删除，等待其消失（最多 $TimeoutSeconds 秒）..."
         $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-        while ((Get-Date) -lt $deadline) {
-            kubectl get namespace cloudp1 -o name 2>$null | Out-Null
-            if ($LASTEXITCODE -ne 0) { break }
+        while ((Get-Date) -lt $deadline -and $phase -ne '') {
             Start-Sleep -Seconds 2
+            $phase = Get-NamespacePhase -Name 'cloudp1'
         }
-        if ((Get-Date) -ge $deadline) {
+        if ($phase -ne '') {
             throw "命名空间 cloudp1 一直停留在 Terminating，超过 $TimeoutSeconds 秒。"
         }
     }
@@ -206,6 +220,8 @@ try {
     exit 0
 }
 catch {
+    # 诊断命令本身也可能失败（比如命名空间已不存在），不要再让它们抛异常。
+    $ErrorActionPreference = 'Continue'
     Write-Host ''
     Write-Host "失败：$($_.Exception.Message)" -ForegroundColor Red
     Write-Host '--- 诊断信息：cloudp1 里的 Pod 与最近事件 ---'
