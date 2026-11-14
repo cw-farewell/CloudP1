@@ -95,12 +95,6 @@ kubectl get pods,svc -n cloudp1 -o wide
 
 NodePort 30080 在 Docker Desktop 下不会转发到 Windows 主机（实测 Test-NetConnection 返回 False），
 因此只能用端口转发访问：
-### 3.4 NodePort 无法从 Windows 主机访问
-
-- k8s/api.yaml 使用 NodePort 30080，但节点跑在 WSL2 里，端口不转发到 Windows 主机。
-- 实测：Test-NetConnection 127.0.0.1 -Port 30080 返回 False；改用 kubectl port-forward 后访问正常。
-- 影响：文档里“访问 localhost:30080”的说法在本环境不成立。
-- 处置：k8s/README.md 第 96 行的“如果本机不支持”改成结论，明确只能端口转发。
 ```powershell
 kubectl port-forward service/todo-api 8000:8000 -n cloudp1
 ```

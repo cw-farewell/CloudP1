@@ -1,0 +1,5 @@
+﻿grafana-6c8f794cbf-kckkx     1/1   Running   5 (33m ago)   4d13h
+prometheus-54c47cc79-f7z6l   1/1   Running   5 (33m ago)   4d13h
+redis-6b995c5c4d-5s48g       1/1   Running   5 (33m ago)   4d13h
+todo-api-77fd4c7675-k469w    1/1   Running   1 (33m ago)   33h
+todo-api-77fd4c7675-rcvbx    1/1   Running   1 (33m ago)   33h

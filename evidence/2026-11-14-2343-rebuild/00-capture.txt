@@ -1,0 +1,4 @@
+﻿capture_time : 2026-11-14 23:43:36 +08:00
+context      : docker-desktop
+client       : Client Version: v1.36.1 Kustomize Version: v5.8.1
+purpose      : 删除命名空间后从零重建，测总耗时

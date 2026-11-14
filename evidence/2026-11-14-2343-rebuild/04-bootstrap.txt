@@ -1,0 +1,67 @@
+﻿
+==> 预检环境
+当前 context：docker-desktop
+预检通过
+
+==> 应用清单（apply 是幂等的，可重复执行）
+apply k8s/namespace.yaml
+namespace/cloudp1 created
+apply k8s/redis.yaml
+deployment.apps/redis created
+service/redis created
+apply k8s/api.yaml
+configmap/todo-api-config created
+deployment.apps/todo-api created
+service/todo-api created
+apply k8s/prometheus.yaml
+configmap/prometheus-config created
+deployment.apps/prometheus created
+service/prometheus created
+apply k8s/grafana.yaml
+configmap/grafana-provisioning created
+deployment.apps/grafana created
+service/grafana created
+
+==> 等待工作负载就绪（每个最多 300 秒）
+等待 deployment/redis
+Waiting for deployment "redis" rollout to finish: 0 of 1 updated replicas are available...
+deployment "redis" successfully rolled out
+等待 deployment/todo-api
+Waiting for deployment "todo-api" rollout to finish: 0 of 2 updated replicas are available...
+Waiting for deployment "todo-api" rollout to finish: 1 of 2 updated replicas are available...
+deployment "todo-api" successfully rolled out
+等待 deployment/prometheus
+deployment "prometheus" successfully rolled out
+等待 deployment/grafana
+deployment "grafana" successfully rolled out
+
+==> 结果
+Pod 就绪：5 / 5
+  grafana-6c8f794cbf-dt4jk     true   Running
+  prometheus-54c47cc79-lm5f2   true   Running
+  redis-6b995c5c4d-drv4k       true   Running
+  todo-api-77fd4c7675-2f9zn    true   Running
+  todo-api-77fd4c7675-69v6z    true   Running
+API 镜像：ghcr.io/cw-farewell/cloudp1:77481d1fab6e
+API 后端数量：2
+  10.244.0.11
+  10.244.0.12
+
+==> 耗时
+
+Step Seconds   Ok
+---- -------   --
+预检       0.3 True
+应用清单     1.5 True
+等待就绪     5.5 True
+
+
+
+总耗时：7.8 秒
+
+重建完成。
+本机访问接口（另开一个终端，保持前台运行）：
+  kubectl port-forward service/todo-api 8000:8000 -n cloudp1
+  kubectl port-forward service/prometheus 9090:9090 -n cloudp1
+  kubectl port-forward service/grafana 3000:3000 -n cloudp1
+注意：NodePort 30080 在 Docker Desktop 下不转发到 Windows 主机，只能用端口转发。

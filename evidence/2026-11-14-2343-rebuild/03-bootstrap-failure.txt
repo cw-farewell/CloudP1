@@ -1,0 +1,19 @@
+﻿
+==> 预检环境
+当前 context：docker-desktop
+
+失败：Error from server (NotFound): namespaces "cloudp1" not found
+--- 诊断信息：cloudp1 里的 Pod 与最近事件 ---
+powershell.exe : kubectl : No resources found in cloudp1 namespace.
+所在位置 行:24 字符: 8
++ $out = & powershell -NoProfile -ExecutionPolicy Bypass -File "E:\Clou ...
++        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (kubectl : No re...udp1 namespace.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+At E:\CloudProject\CloudP1\scripts\bootstrap.ps1:212 char:5
++     kubectl get pods -n cloudp1 2>$null
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (No resources found in cloudp1 namespace.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
