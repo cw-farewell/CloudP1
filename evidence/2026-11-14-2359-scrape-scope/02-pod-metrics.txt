@@ -1,0 +1,8 @@
+﻿pod todo-api-77fd4c7675-2f9zn
+  /todos 请求计数序列: 3
+  全部请求计数序列: 8
+  /todos 直方图桶序列: 30
+pod todo-api-77fd4c7675-69v6z
+  /todos 请求计数序列: 0
+  全部请求计数序列: 5
+  /todos 直方图桶序列: 0

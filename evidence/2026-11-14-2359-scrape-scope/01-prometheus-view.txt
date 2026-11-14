@@ -1,0 +1,12 @@
+﻿prometheus instance 标签取值（job=todo-api）:
+  instance=todo-api:8000 up=1
+
+存在的 path 取值:
+  [/readyz] 序列数=1
+  [/healthz] 序列数=1
+  [/metrics] 序列数=1
+  [/todos] 序列数=3
+
+P95 表达式结果:
+  POST /todos = NaN
+  GET /todos = NaN

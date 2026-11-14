@@ -44,6 +44,15 @@
 - 影响：文档里"访问 localhost:30080"的说法在本环境不成立。
 - 处置：`k8s/README.md` 的说明已改成结论，明确只能用端口转发。
 
+### 3.5 Prometheus 通过 Service 抓取，两个副本混成一个 target
+
+- `k8s/prometheus.yaml` 的抓取目标是 `todo-api:8000`（Service DNS），而 Service 后面有两个 Pod。
+- Prometheus 每次抓取可能落到不同 Pod，但 `instance` 标签只有 `todo-api:8000` 一个值。两个 Pod 的计数器因此共用同一个 series 身份，表现成"计数器忽增忽减"。
+- 后果：`rate()` 与 `histogram_quantile()` 在错误的数据上运算。实测 `/todos` 的 P95 返回 `NaN`，速率查询对 `/todos` 恒为 0。
+- 对照：两个 Pod 直连 `/metrics`，一个有 42 条 `/todos` 相关序列，另一个是 0 条。
+- 证据：`evidence/2026-11-14-2359-scrape-scope/`
+- 处置：M3 第一件事改成按 Pod 抓取（`kubernetes_sd_configs` 的 `role: pod` 加 relabel，或加一个 headless Service 用 `dns_sd_configs`），让每个 Pod 有自己的 `instance`。
+
 ## 4. 证据索引
 
 | 目录 | 内容 | 证明了什么 |

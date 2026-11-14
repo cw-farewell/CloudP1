@@ -1,0 +1,3 @@
+﻿capture_time : 2026-11-14 23:51:50 +08:00
+context      : docker-desktop
+purpose      : 确认 Prometheus 抓取范围，两个 API 副本是否都被采集
