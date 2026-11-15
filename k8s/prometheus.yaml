@@ -1,4 +1,44 @@
-# 教学用 Prometheus：集群内抓取 API Service 的 /metrics。
+# Prometheus 抓取范围通过 Pod 发现确定，而不是抓 Service。
+#
+# 为什么不用 Service DNS：Service 后面有两个 API Pod，Prometheus 每次抓取可能落到不同的
+# Pod，但 instance 标签只有一个值，两个 Pod 的计数器会被当成同一条序列，表现为计数器忽增忽减，
+# rate() 和 histogram_quantile() 都算不出可信结果。
+#
+# 现在改为 role: pod，一个 Pod 一个 target，instance 用 Pod 名，并保留 pod 与 namespace 标签。
+
+# Prometheus 需要读 Pod 列表才能发现抓取目标。
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: cloudp1
+---
+# 权限只给本命名空间的 pods 读操作，不给额外权限。
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prometheus-pod-reader
+  namespace: cloudp1
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-pod-reader
+  namespace: cloudp1
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: cloudp1
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prometheus-pod-reader
+---
+# 教学用 Prometheus：按 Pod 发现抓取 API 的 /metrics。
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -14,9 +54,32 @@ data:
     scrape_configs:
       - job_name: todo-api
         metrics_path: /metrics
-        static_configs:
-          # 使用 Kubernetes Service DNS；Service 会把请求转发给就绪的 API Pod。
-          - targets: ["todo-api:8000"]
+        kubernetes_sd_configs:
+          # 只在本命名空间内发现 Pod，配合上面的 Role 就够用。
+          - role: pod
+            namespaces:
+              names:
+                - cloudp1
+        relabel_configs:
+          # 只保留带 app=todo-api 标签的 Pod。
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: todo-api
+            action: keep
+          # 只保留声明了 http 端口的容器，避免抓到 sidecar 或其它端口。
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            regex: http
+            action: keep
+          # 抓取地址用 Pod IP 加容器端口，而不是 Service DNS。
+          - source_labels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_container_port_number]
+            separator: ":"
+            target_label: __address__
+          # instance 用 Pod 名，比 IP 好读，重建后也能对上。
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: instance
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
   alerts.yml: |
     groups:
       - name: todo-api
@@ -59,6 +122,8 @@ spec:
       labels:
         app: prometheus
     spec:
+      # 使用上面创建的 ServiceAccount，才会带上读 Pod 的权限。
+      serviceAccountName: prometheus
       containers:
         - name: prometheus
           image: prom/prometheus:v3.5.0

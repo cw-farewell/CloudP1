@@ -1,0 +1,5 @@
+﻿path=/todos status=201 的累计计数（按 instance）:
+  todo-api-77fd4c7675-69v6z -> 90
+
+直方图 +Inf 累计（按 instance, method）:
+  todo-api-77fd4c7675-69v6z POST -> 90

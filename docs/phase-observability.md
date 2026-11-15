@@ -9,7 +9,7 @@
 ```text
 API 中间件记录请求指标
   -> /metrics 暴露 Prometheus 文本格式
-  -> Prometheus 每 15 秒抓取 todo-api:8000/metrics 并保存时间序列
+  -> Prometheus 每 15 秒按 Pod 发现，逐个抓取 API Pod 的 /metrics 并保存时间序列
   -> Grafana 使用 Prometheus 数据源查询并展示面板
   -> Prometheus 根据规则评估告警状态
 ```
@@ -17,11 +17,11 @@ API 中间件记录请求指标
 - `k8s/prometheus.yaml`：Prometheus 配置、Deployment、Service，以及两条告警规则。
 - `k8s/grafana.yaml`：Grafana 数据源、仪表盘配置、Deployment 和 Service。
 - `app/main.py`：定义请求计数器和耗时 Histogram，并由 HTTP 中间件更新；`/metrics` 调用 `generate_latest()` 输出。
-- 本机访问 UI 使用 `kubectl port-forward`；Prometheus 抓 API 使用集群内 Service DNS，两条网络路径不同。
+- 本机访问 UI 使用 `kubectl port-forward`；Prometheus 通过 `kubernetes_sd_configs` 发现 Pod，直接抓 Pod IP，不经过 Service，两条网络路径不同。
 
 ## 本阶段完成
 
-1. Prometheus 抓取 `todo-api:8000/metrics`，target 状态为 `UP`，PromQL 查询到 `todo_http_requests_total`。
+1. Prometheus 按 Pod 发现抓取，两个 API Pod 各有一个 target，状态都是 `UP`，PromQL 能按 `instance` 查到各自的 `todo_http_requests_total`。
 2. Grafana 连接 Prometheus，并显示按 path/status 汇总的 API 请求速率面板。
 3. Prometheus 加载 `TodoApiScrapeAvailabilityLow` 与 `TodoApiHigh5xxRate`，规则组和规则健康状态正常。
 4. 临时改动 API Service selector 制造采集失败；告警进入 `firing`。恢复为 `app: todo-api` 后，Endpoints 恢复，告警在时间窗口重新评估后变为 `inactive`。
@@ -47,6 +47,29 @@ Docker Desktop Kubernetes 关闭时，kubectl 无法访问 API Server。集群�
 ### PowerShell patch JSON 引号问题
 
 多种内联 JSON 写法传给 `kubectl patch` 后引号丢失。通过检查 Service 的 `spec.selector` 发现实际配置仍然是 `app: todo-api`。本次演练使用 `kubectl edit` 修改 selector，并在恢复后确认 Endpoints 有两个 API 后端。
+
+### 抓取范围错误：两个副本混成一个 target（2026-11-15 修复）
+
+早期配置把抓取目标写成 `todo-api:8000`，也就是 Service DNS。Service 后面有两个 Pod，
+Prometheus 每次抓取可能落到不同的一个，而 `instance` 标签只有 `todo-api:8000` 这一个值。
+两个 Pod 的计数器因此共用同一个 series 身份，Prometheus 看到的是计数器忽增忽减。
+
+后果是查询结果不可信：`/todos` 的 P95 返回 `NaN`，速率对业务路径恒为 0；而探针流量一直在，
+`up` 也是 1，面板上看起来"有曲线"，问题很隐蔽。
+
+定位方式：查 `up{job="todo-api"}` 的 `instance` 只有一个值；再分别对两个 Pod 直连 `/metrics`，
+一个有 42 条 `/todos` 相关序列，另一个是 0 条。证据在 `evidence/2026-11-14-2359-scrape-scope/`。
+
+修复：给 Prometheus 建 ServiceAccount、Role、RoleBinding（只允许读本命名空间的 pods），
+抓取配置改成 `kubernetes_sd_configs` 的 `role: pod`，限制命名空间，用 relabel 只保留
+`app=todo-api` 且声明了 `http` 端口的 Pod，`instance` 改成 Pod 名。
+
+修复后：两个 target 都是 `UP`，P95 返回具体数值（样例 0.0048 秒），计数按 Pod 分开。
+证据在 `evidence/2026-11-15-1050-scrape-fix/`。
+
+另一个观察：通过 `kubectl port-forward` 到 Service 造流量时，全部请求会落在同一个 Pod，
+因为 port-forward 只建立一条 TCP 连接，Service 按连接做负载均衡。要覆盖两个副本，
+需要多开连接或直接对每个 Pod 做转发。
 
 ### 告警恢复延迟
 
