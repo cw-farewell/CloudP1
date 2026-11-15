@@ -1,0 +1,5 @@
+﻿capture_time : 2026-11-15 21:59:47 +08:00
+context      : docker-desktop
+purpose      : 用流量发生器造 60 次请求（10% 故意 422）后，验证 SLO 报告能否看见失败
+load         : Rate=1/s, Duration=1min, FailurePercent=10, FailureKind=422
+generator_out: 201=53, 422=7, 实际速率 1.02/s, 成功率 88.33%
