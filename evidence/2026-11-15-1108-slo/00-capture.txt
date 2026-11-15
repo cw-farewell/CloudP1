@@ -1,0 +1,4 @@
+﻿capture_time : 2026-11-15 11:07:41 +08:00
+context      : docker-desktop
+purpose      : 首次 SLO 实测，窗口 1 小时，阈值 100ms
+exit_code    : 0
