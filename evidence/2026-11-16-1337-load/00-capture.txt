@@ -1,0 +1,7 @@
+﻿capture_time   : 2026-11-16 13:37:43 +08:00
+api_url        : http://localhost:8000
+context        : docker-desktop
+target_rate    : 1 per second
+duration_min   : 20
+failure_percent: 0
+failure_kind   : 422
