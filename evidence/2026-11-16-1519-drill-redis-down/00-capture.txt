@@ -1,0 +1,5 @@
+﻿capture_time : 2026-11-16 15:19:56 +08:00
+context      : docker-desktop
+scenario     : redis 停止，观察 API 影响与告警
+hold_seconds : 420
+probe_interval: 3

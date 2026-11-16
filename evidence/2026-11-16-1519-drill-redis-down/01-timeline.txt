@@ -1,0 +1,7 @@
+﻿2026-11-16 15:10:55  注入开始  kubectl scale deployment/redis --replicas=0
+2026-11-16 15:10:59  用户受影响  首次探测返回 500
+2026-11-16 15:12:43  告警 pending  TodoApiHigh5xxRate
+2026-11-16 15:14:30  告警 firing  TodoApiHigh5xxRate
+2026-11-16 15:14:51  恢复操作  kubectl scale deployment/redis --replicas=1
+2026-11-16 15:14:58  业务恢复  探测返回 200
+2026-11-16 15:19:56  告警解除  全部规则回到 inactive
