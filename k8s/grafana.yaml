@@ -74,7 +74,7 @@ data:
         {
           "id": 3,
           "title": "API 可用性（2xx 占比）",
-          "description": "业务路径的 2xx 占比，排除探针与监控路径。与 docs/slo.md 的 SLO-1 口径一致。",
+          "description": "业务路径的 2xx 占比，排除探针与监控路径。与 docs/slo.md 的 SLO-1 口径一致。没有业务流量时分母为 0，面板显示 No data 而不是 0%，因为 0/0 不表示服务不可用。",
           "type": "stat",
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "gridPos": {"h": 6, "w": 6, "x": 0, "y": 18},
@@ -103,7 +103,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(rate(todo_http_requests_total{job=\"todo-api\",path!~\"/healthz|/readyz|/metrics\",status=~\"2..\"}[5m])) / clamp_min(sum(rate(todo_http_requests_total{job=\"todo-api\",path!~\"/healthz|/readyz|/metrics\"}[5m])), 0.001)",
+              "expr": "(sum(rate(todo_http_requests_total{job=\"todo-api\",path!~\"/healthz|/readyz|/metrics\",status=~\"2..\"}[5m])) or vector(0)) / sum(rate(todo_http_requests_total{job=\"todo-api\",path!~\"/healthz|/readyz|/metrics\"}[5m]))",
               "instant": true,
               "range": false
             }
@@ -112,7 +112,7 @@ data:
         {
           "id": 4,
           "title": "5xx 比例",
-          "description": "当前观测到的 5xx 占比。低流量时比例不稳定，判断前先看请求速率。",
+          "description": "业务路径的 5xx 占比。没有业务流量时显示 No data，表示无从判断，而不是 0%。",
           "type": "stat",
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "gridPos": {"h": 6, "w": 6, "x": 6, "y": 18},
@@ -141,7 +141,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(rate(todo_http_requests_total{job=\"todo-api\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(todo_http_requests_total{job=\"todo-api\"}[5m])), 0.001)",
+              "expr": "(sum(rate(todo_http_requests_total{job=\"todo-api\",path!~\"/healthz|/readyz|/metrics\",status=~\"5..\"}[5m])) or vector(0)) / sum(rate(todo_http_requests_total{job=\"todo-api\",path!~\"/healthz|/readyz|/metrics\"}[5m]))",
               "instant": true,
               "range": false
             }
@@ -187,8 +187,8 @@ data:
         },
         {
           "id": 6,
-          "title": "最近 5 分钟 5xx 与 2xx 请求速率",
-          "description": "两条曲线对比，用来判断错误是在增加还是只是请求量下降。",
+          "title": "业务请求速率（2xx / 5xx）",
+          "description": "只看业务路径，排除探针。两条曲线对比，用来判断错误是在增加还是只是请求量下降。",
           "type": "timeseries",
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "gridPos": {"h": 6, "w": 6, "x": 18, "y": 18},
@@ -197,8 +197,8 @@ data:
             "overrides": []
           },
           "targets": [
-            {"refId": "A", "expr": "sum(rate(todo_http_requests_total{job=\"todo-api\",status=~\"2..\"}[5m]))", "legendFormat": "2xx", "range": true},
-            {"refId": "B", "expr": "sum(rate(todo_http_requests_total{job=\"todo-api\",status=~\"5..\"}[5m]))", "legendFormat": "5xx", "range": true}
+            {"refId": "A", "expr": "sum(rate(todo_http_requests_total{job=\"todo-api\",path!~\"/healthz|/readyz|/metrics\",status=~\"2..\"}[5m]))", "legendFormat": "2xx", "range": true},
+            {"refId": "B", "expr": "sum(rate(todo_http_requests_total{job=\"todo-api\",path!~\"/healthz|/readyz|/metrics\",status=~\"5..\"}[5m]))", "legendFormat": "5xx", "range": true}
           ]
         },
         {
