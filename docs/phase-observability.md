@@ -75,6 +75,27 @@ Prometheus 每次抓取可能落到不同的一个，而 `instance` 标签只有
 
 可用性表达式使用 5 分钟窗口，抓取间隔 15 秒，并有 `for: 1m`。恢复后历史窗口仍含 `up=0` 样本，所以告警不会立即解除；等窗口滚动并重新评估后转为 `inactive`。
 
+## 面板（2026-11-16 补齐为 7 块）
+
+| # | 面板 | 类型 | 回答的问题 |
+|---|---|---|---|
+| 1 | API 请求速率（按 path/status） | 时序 | 请求有没有在来，错误在增加还是只是量下降 |
+| 2 | 待办业务 API 请求延迟 P95 | 时序 | 慢不慢 |
+| 3 | API 可用性（2xx 占比） | 数值 | 与 SLO-1 同口径的即时可用性，阈值 99%/95% |
+| 4 | 5xx 比例 | 数值 | 服务端错误占比，阈值 1%/5%，与告警规则同源 |
+| 5 | 采集中的 API 实例数 | 数值 | `sum(up{job="todo-api"})` 应为 2，掉到 1 或 0 即异常 |
+| 6 | 最近 5 分钟 2xx 与 5xx 速率 | 时序 | 两条曲线对照，区分"错误变多"和"流量变小" |
+| 7 | 抓取状态（每 Pod） | 时序 | 每个 Pod 的 `up`，断流时最先掉的就是它 |
+
+三个操作要点：
+
+- **改完必须重启 Grafana。** Deployment 用 `subPath` 挂载单个 dashboard 文件，`subPath` 不会随
+  ConfigMap 更新而刷新。`kubectl apply` 之后要 `kubectl rollout restart deployment/grafana -n cloudp1`，
+  否则界面上还是旧面板。2026-11-16 就出现过一次：apply 完打开 Grafana 显示找不到 dashboard，
+  重启后才加载出 7 块。
+- **面板数字有 15 到 30 秒延迟。** 抓取间隔 15 秒，`rate()` 窗口 5 分钟，刚发完请求时数值可能还是
+  0 或 No data，等一个采集周期再看，不要立刻判断配置错了。
+- **可用性面板与 docs/slo.md 同口径**：排除 `/healthz`、`/readyz`、`/metrics`，分子只用 2xx。
 ## 告警与 SLO 边界
 
 - `TodoApiScrapeAvailabilityLow` 的 `up` 衡量 Prometheus 抓取 `/metrics` 是否成功，不等于用户完整业务可用。

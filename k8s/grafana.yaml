@@ -70,6 +70,156 @@ data:
               "range": true
             }
           ]
+        },
+        {
+          "id": 3,
+          "title": "API 可用性（2xx 占比）",
+          "description": "业务路径的 2xx 占比，排除探针与监控路径。与 docs/slo.md 的 SLO-1 口径一致。",
+          "type": "stat",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 6, "w": 6, "x": 0, "y": 18},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 0.95},
+                  {"color": "green", "value": 0.99}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate(todo_http_requests_total{job=\"todo-api\",path!~\"/healthz|/readyz|/metrics\",status=~\"2..\"}[5m])) / clamp_min(sum(rate(todo_http_requests_total{job=\"todo-api\",path!~\"/healthz|/readyz|/metrics\"}[5m])), 0.001)",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "5xx 比例",
+          "description": "当前观测到的 5xx 占比。低流量时比例不稳定，判断前先看请求速率。",
+          "type": "stat",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 6, "w": 6, "x": 6, "y": 18},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 0.01},
+                  {"color": "red", "value": 0.05}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate(todo_http_requests_total{job=\"todo-api\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(todo_http_requests_total{job=\"todo-api\"}[5m])), 0.001)",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "采集中的 API 实例数",
+          "description": "up=1 的 API Pod 数量。副本数应为 2，掉到 1 或 0 说明采集或 Pod 出了问题。",
+          "type": "stat",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 6, "w": 6, "x": 12, "y": 18},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "green", "value": 2}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(up{job=\"todo-api\"})",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "title": "最近 5 分钟 5xx 与 2xx 请求速率",
+          "description": "两条曲线对比，用来判断错误是在增加还是只是请求量下降。",
+          "type": "timeseries",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 6, "w": 6, "x": 18, "y": 18},
+          "fieldConfig": {
+            "defaults": {"unit": "reqps", "min": 0},
+            "overrides": []
+          },
+          "targets": [
+            {"refId": "A", "expr": "sum(rate(todo_http_requests_total{job=\"todo-api\",status=~\"2..\"}[5m]))", "legendFormat": "2xx", "range": true},
+            {"refId": "B", "expr": "sum(rate(todo_http_requests_total{job=\"todo-api\",status=~\"5..\"}[5m]))", "legendFormat": "5xx", "range": true}
+          ]
+        },
+        {
+          "id": 7,
+          "title": "抓取状态（每 Pod）",
+          "description": "1 表示能抓到该 Pod 的指标，0 表示抓取失败。演练断流时这条线最先掉。",
+          "type": "timeseries",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1.1,
+              "decimals": 0,
+              "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never"}
+            },
+            "overrides": []
+          },
+          "targets": [
+            {"refId": "A", "expr": "up{job=\"todo-api\"}", "legendFormat": "{{instance}}", "range": true}
+          ]
         }
       ]
     }
