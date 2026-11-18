@@ -81,7 +81,23 @@ data:
           - source_labels: [__meta_kubernetes_pod_name]
             target_label: pod
           - source_labels: [__meta_kubernetes_namespace]
-            target_label: namespace
+            target_label: namespace      # 黑盒探测：不问应用"你好不好"，直接走业务路径问"能不能用"。
+      # 每 5 秒一次，比应用指标抓取更密，用来把发现耗时压到秒级。
+      - job_name: blackbox-todo-api
+        metrics_path: /probe
+        scrape_interval: 5s
+        params:
+          module: [http_2xx]
+        static_configs:
+          - targets:
+              - http://todo-api:8000/todos
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: blackbox-exporter:9115
   alerts.yml: |
     groups:
       - name: todo-api
@@ -108,6 +124,16 @@ data:
               description: "Prometheus 找不到任何 job=todo-api 的目标，可能 Pod 全部不可用或被删除。"
           # 5xx 比例超过 5% 且持续 1 分钟时告警。          # 2026-11-16 演练：窗口 5 分钟 + for 2 分钟，导致用户受影响后 211 秒才 firing。
           # 改为 1 分钟窗口 + for 1 分钟，并加请求量下限，避免单个请求就触发。
+          # 黑盒探测失败：用户路径 /todos 拿不到 200。
+          # for 只给 30 秒，因为探测每 5 秒一次，不需要等太久确认。
+          - alert: TodoApiBlackboxProbeFailing
+            expr: probe_success{job="blackbox-todo-api"} == 0
+            for: 30s
+            labels:
+              severity: critical
+            annotations:
+              summary: "黑盒探测失败，用户路径不可用"
+              description: "最近 30 秒内，对 /todos 的探测始终不是 2xx。"
           - alert: TodoApiHigh5xxRate
             expr: |
               (

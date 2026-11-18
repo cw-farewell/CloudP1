@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | 1 | 可重复部署 | PASS | `scripts/bootstrap.ps1`、`docs/cluster-local.md`、`evidence/2026-11-14-2343-rebuild/` | 删除命名空间后 7.8 秒恢复全部就绪；失败路径也验证过（预检缺陷、镜像拉取失败各一次） |
 | 2 | CI 记录 | PASS | `.github/workflows/container-ci.yml`、`evidence/2026-11-18-ci-run/00-capture.txt` | 运行 #11 结论 Success，总耗时 39s，镜像 tag 与提交一致；构建 job 的分步耗时未记录 |
-| 3 | 观测面板 | PASS | `k8s/grafana.yaml`、`scripts/check-consistency.ps1` | 七块面板，口径与 SLO 一致；检查脚本确认加载 7 块 |
+| 3 | 观测面板 | PASS | `k8s/grafana.yaml`、`k8s/blackbox-exporter.yaml`、`scripts/check-consistency.ps1` | 七块面板，口径与 SLO 一致；另有黑盒探测器每 5 秒探业务路径，四条告警规则全部加载 |
 | 4 | SLO 与实测 | PASS | `docs/slo.md`、`scripts/slo-report.ps1`、`evidence/2026-11-16-1337-load/` | 两条 SLO 有公式、有窗口、有 1200 次长测、有 Wilson 区间 |
 | 5 | 演练记录 ×3 | PASS | `docs/drill-2026-11-16-redis-down.md`、`docs/drill-2026-11-18-pod-delete.md`、`docs/drill-2026-11-18-scale-zero.md` | 三场都有时间线与计时，依赖故障做了改进前后对比 |
 | 6 | 复盘 | PASS | `docs/drills-summary.md` | 三场横向对比、单点分析、改进项闭环状态；两条改进已复测 |

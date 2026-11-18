@@ -1,0 +1,7 @@
+﻿2026-11-18 13:44:39  注入开始  kubectl scale deployment/redis --replicas=0
+2026-11-18 13:44:42  用户受影响  首次探测返回 500
+2026-11-18 13:44:51  告警 pending  TodoApiBlackboxProbeFailing
+2026-11-18 13:45:19  告警 firing  TodoApiBlackboxProbeFailing
+2026-11-18 13:45:40  恢复操作  kubectl scale deployment/redis --replicas=1
+2026-11-18 13:45:47  业务恢复  探测返回 200
+2026-11-18 13:46:57  告警解除  全部规则回到 inactive

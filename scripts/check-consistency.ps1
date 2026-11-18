@@ -25,7 +25,7 @@ param(
     [string]$Namespace = 'cloudp1',
     [string]$PrometheusUrl = '',
     [string]$GrafanaUrl = '',
-    [string[]]$ExpectedAlerts = @('TodoApiScrapeAvailabilityLow', 'TodoApiHigh5xxRate', 'TodoApiTargetsMissing'),
+    [string[]]$ExpectedAlerts = @('TodoApiScrapeAvailabilityLow', 'TodoApiHigh5xxRate', 'TodoApiTargetsMissing', 'TodoApiBlackboxProbeFailing'),
     [int]$ExpectedPanels = 7
 )
 
@@ -85,15 +85,15 @@ foreach ($part in $deployParts) {
     $deployState[$kv[0]] = $kv[1]
 }
 $badDeploys = @()
-foreach ($name in @('redis', 'todo-api', 'prometheus', 'grafana')) {
+foreach ($name in @('redis', 'todo-api', 'prometheus', 'grafana', 'blackbox-exporter')) {
     if (-not $deployState.ContainsKey($name)) { $badDeploys += "$name 缺失"; continue }
     $pair = $deployState[$name] -split '/'
     if ($pair[0] -ne $pair[1]) { $badDeploys += "$name $($deployState[$name])" }
 }
 if ($badDeploys.Count -eq 0) {
-    Add-Check -Name '四个 Deployment 均可用' -Status 'PASS' -Detail "$($deployParts.Count) 个"
+    Add-Check -Name '全部 Deployment 均可用' -Status 'PASS' -Detail "$($deployParts.Count) 个"
 } else {
-    Add-Check -Name '四个 Deployment 均可用' -Status 'FAIL' -Detail ($badDeploys -join '; ')
+    Add-Check -Name '全部 Deployment 均可用' -Status 'FAIL' -Detail ($badDeploys -join '; ')
 }
 # ---------- 5 告警规则 ----------
 if ([string]::IsNullOrWhiteSpace($PrometheusUrl)) {

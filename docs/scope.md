@@ -13,7 +13,7 @@
 | 被运维对象 | FastAPI 待办 API（双副本）+ Redis（单副本） |
 | 交付方式 | 声明式清单 + `scripts/bootstrap.ps1` 一键重建 |
 | 镜像 | GitHub Actions 构建，按提交哈希打 tag，推到 GHCR |
-| 观测 | Prometheus 按 Pod 发现抓取，Grafana 七块面板，三条告警规则 |
+| 观测 | Prometheus 按 Pod 发现抓取，黑盒探测器每 5 秒探测业务路径，Grafana 七块面板，四条告警规则 |
 | SLO | 可用性 99%、95% 请求在 100ms 内，1 小时滚动窗口，Wilson 置信区间判定 |
 | 演练 | 依赖故障、单 Pod 删除、整体断流三场，全部带计时 |
 | 证据 | `evidence/` 下按时间归档的原始输出 |

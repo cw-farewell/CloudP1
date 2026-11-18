@@ -28,7 +28,7 @@ param(
     [int]$HoldSeconds = 240,
     [int]$ProbeIntervalSeconds = 3,
     [int]$RecoveryTimeoutSeconds = 600,
-    [string[]]$AlertNames = @('TodoApiScrapeAvailabilityLow', 'TodoApiHigh5xxRate'),
+    [string[]]$AlertNames = @('TodoApiScrapeAvailabilityLow', 'TodoApiHigh5xxRate', 'TodoApiBlackboxProbeFailing', 'TodoApiTargetsMissing'),
     [switch]$Record
 )
 

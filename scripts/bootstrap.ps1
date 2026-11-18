@@ -85,10 +85,11 @@ $manifests = @(
     'k8s/redis.yaml'
     'k8s/api.yaml'
     'k8s/prometheus.yaml'
+    'k8s/blackbox-exporter.yaml'
     'k8s/grafana.yaml'
 )
 
-$deployments = @('redis', 'todo-api', 'prometheus', 'grafana')
+$deployments = @('redis', 'todo-api', 'prometheus', 'grafana', 'blackbox-exporter')
 
 try {
     # ---------- 1 预检 ----------

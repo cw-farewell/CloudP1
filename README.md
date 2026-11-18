@@ -10,7 +10,7 @@ Redis 单副本且无持久化，告警没有通知渠道。所有数字都带�
 
 ```
 app/                  FastAPI 服务：待办接口、健康探针、Prometheus 指标
-k8s/                  命名空间、Redis、API、Prometheus、Grafana 的声明式清单
+k8s/                  命名空间、Redis、API、Prometheus、Grafana、黑盒探测器的声明式清单
 scripts/              bootstrap 重建、SLO 报告、流量发生器、两场演练脚本、一致性检查
 docs/                 范围与边界、SLO 口径、观测说明、三场演练记录与横向复盘
 evidence/             按时间归档的原始输出（集群状态、演练时间线、探针日志）
@@ -68,6 +68,7 @@ kubectl port-forward service/grafana 3000:3000 -n cloudp1
 | 依赖故障：恢复 | 6.2 秒 | 恢复操作到首次 200 |
 | 删一个 API Pod | 0 次失败 / 54 条样本 | 双副本加就绪探针，2 秒内自愈 |
 | 整体断流：MTTD | 无告警 → 110 秒 | 补 `absent()` 规则前后 |
+| 依赖故障：MTTD（黑盒探测后） | **37 秒** | 每 5 秒探测 /todos，or: 30s |
 
 三场演练的时间线、根因和改进闭环见 `docs/drills-summary.md`。
 

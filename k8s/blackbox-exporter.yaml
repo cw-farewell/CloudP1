@@ -1,0 +1,76 @@
+# 黑盒探测：从"用户路径"而不是"应用指标"判断服务是否可用。
+#
+# 为什么需要它：应用自己暴露的 /metrics 在 Redis 挂掉时依然正常（/metrics 不依赖 Redis），
+# 结果是"指标全绿、用户全挂"。黑盒探测直接请求业务路径 /todos，
+# 用它的返回码判断用户能不能用，不再靠推断。
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blackbox-config
+  namespace: cloudp1
+data:
+  blackbox.yml: |
+    modules:
+      http_2xx:
+        prober: http
+        timeout: 3s
+        http:
+          method: GET
+          preferred_ip_protocol: ip4
+          # 只有 2xx 才算成功。4xx 和 5xx 都视为用户拿不到结果。
+          valid_status_codes: [200]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter
+  namespace: cloudp1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app: blackbox-exporter
+    spec:
+      containers:
+        - name: blackbox-exporter
+          image: prom/blackbox-exporter:v0.25.0
+          args:
+            - --config.file=/etc/blackbox_exporter/blackbox.yml
+          ports:
+            - name: http
+              containerPort: 9115
+          volumeMounts:
+            - name: config
+              mountPath: /etc/blackbox_exporter/blackbox.yml
+              subPath: blackbox.yml
+              readOnly: true
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+      volumes:
+        - name: config
+          configMap:
+            name: blackbox-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blackbox-exporter
+  namespace: cloudp1
+spec:
+  type: ClusterIP
+  selector:
+    app: blackbox-exporter
+  ports:
+    - name: http
+      port: 9115
+      targetPort: http
