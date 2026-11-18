@@ -49,6 +49,8 @@ data:
     global:
       # 每 15 秒采集一次，便于观察且适合本地练习。
       scrape_interval: 15s
+      # 规则每 15 秒评估一次。默认是 1 分钟，会把告警发现时间拉长整整一个周期。
+      evaluation_interval: 15s
     rule_files:
       - /etc/prometheus/alerts.yml
     scrape_configs:
@@ -93,19 +95,24 @@ data:
             annotations:
               summary: "Todo API 指标采集可用率低于 99%"
               description: "Prometheus 最近 5 分钟无法稳定抓取 todo-api。"
-          # 有请求样本且 5xx 比例超过 5% 持续 2 分钟时告警。
+          # 5xx 比例超过 5% 且持续 1 分钟时告警。
+          # 2026-11-16 演练：窗口 5 分钟 + for 2 分钟，导致用户受影响后 211 秒才 firing。
+          # 改为 1 分钟窗口 + for 1 分钟，并加请求量下限，避免单个请求就触发。
           - alert: TodoApiHigh5xxRate
             expr: |
-              sum(rate(todo_http_requests_total{job="todo-api",status=~"5.."}[5m]))
-              /
-              clamp_min(sum(rate(todo_http_requests_total{job="todo-api"}[5m])), 0.001)
-              > 0.05
-            for: 2m
+              (
+                sum(rate(todo_http_requests_total{job="todo-api",status=~"5.."}[1m]))
+                /
+                sum(rate(todo_http_requests_total{job="todo-api"}[1m]))
+              ) > 0.05
+              and
+              sum(rate(todo_http_requests_total{job="todo-api"}[1m])) > 0.1
+            for: 1m
             labels:
               severity: warning
             annotations:
               summary: "Todo API 5xx 错误比例超过 5%"
-              description: "最近 5 分钟请求中 5xx 比例超过 5%，并持续 2 分钟。"
+              description: "最近 1 分钟请求中 5xx 比例超过 5%，持续 1 分钟，且请求速率高于 0.1/秒。"
 ---
 apiVersion: apps/v1
 kind: Deployment
