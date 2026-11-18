@@ -1,0 +1,4 @@
+﻿capture_time : 2026-11-18 10:30:16 +08:00
+context      : docker-desktop
+scenario     : API 副本数改为 0，模拟服务全断流
+inject_time  : 10:26:54

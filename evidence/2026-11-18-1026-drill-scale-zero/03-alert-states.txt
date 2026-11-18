@@ -1,0 +1,12 @@
+﻿10:27:10  up目标数=2  告警: TodoApiScrapeAvailabilityLow=inactive TodoApiHigh5xxRate=inactive
+10:27:25  up目标数=无结果  告警: TodoApiScrapeAvailabilityLow=inactive TodoApiHigh5xxRate=inactive
+10:27:40  up目标数=无结果  告警: TodoApiScrapeAvailabilityLow=inactive TodoApiHigh5xxRate=inactive
+10:27:55  up目标数=无结果  告警: TodoApiScrapeAvailabilityLow=inactive TodoApiHigh5xxRate=inactive
+10:28:10  up目标数=无结果  告警: TodoApiScrapeAvailabilityLow=inactive TodoApiHigh5xxRate=inactive
+10:28:25  up目标数=无结果  告警: TodoApiScrapeAvailabilityLow=inactive TodoApiHigh5xxRate=inactive
+10:28:40  up目标数=无结果  告警: TodoApiScrapeAvailabilityLow=inactive TodoApiHigh5xxRate=inactive
+10:28:55  up目标数=无结果  告警: TodoApiScrapeAvailabilityLow=inactive TodoApiHigh5xxRate=inactive
+10:29:10  up目标数=无结果  告警: TodoApiScrapeAvailabilityLow=inactive TodoApiHigh5xxRate=inactive
+10:29:25  up目标数=无结果  告警: TodoApiScrapeAvailabilityLow=inactive TodoApiHigh5xxRate=inactive
+10:29:40  up目标数=无结果  告警: TodoApiScrapeAvailabilityLow=inactive TodoApiHigh5xxRate=inactive
+10:29:55  up目标数=无结果  告警: TodoApiScrapeAvailabilityLow=inactive TodoApiHigh5xxRate=inactive

@@ -95,8 +95,18 @@ data:
             annotations:
               summary: "Todo API 指标采集可用率低于 99%"
               description: "Prometheus 最近 5 分钟无法稳定抓取 todo-api。"
-          # 5xx 比例超过 5% 且持续 1 分钟时告警。
-          # 2026-11-16 演练：窗口 5 分钟 + for 2 分钟，导致用户受影响后 211 秒才 firing。
+          # 目标整体消失时，up{job="todo-api"} 变成空向量，比例类规则在空数据上不会触发。
+          # 2026-11-18 演练：副本数改为 0，用户全断流约 3 分钟，两条告警都没响。
+          # absent() 专门处理这种"本该有数据却没有"的情况。
+          - alert: TodoApiTargetsMissing
+            expr: absent(up{job="todo-api"})
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Todo API 的抓取目标全部消失"
+              description: "Prometheus 找不到任何 job=todo-api 的目标，可能 Pod 全部不可用或被删除。"
+          # 5xx 比例超过 5% 且持续 1 分钟时告警。          # 2026-11-16 演练：窗口 5 分钟 + for 2 分钟，导致用户受影响后 211 秒才 firing。
           # 改为 1 分钟窗口 + for 1 分钟，并加请求量下限，避免单个请求就触发。
           - alert: TodoApiHigh5xxRate
             expr: |
