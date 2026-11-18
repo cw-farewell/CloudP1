@@ -10,7 +10,7 @@
 | # | 材料 | 判定 | 证据 | 说明 |
 |---|---|---|---|---|
 | 1 | 可重复部署 | PASS | `scripts/bootstrap.ps1`、`docs/cluster-local.md`、`evidence/2026-11-14-2343-rebuild/` | 删除命名空间后 7.8 秒恢复全部就绪；失败路径也验证过（预检缺陷、镜像拉取失败各一次） |
-| 2 | CI 记录 | PARTIAL | `.github/workflows/container-ci.yml`、`k8s/api.yaml` 的镜像 tag、`evidence/2026-11-13-1504-rollout/` | 镜像按提交哈希打 tag，可追溯到提交；但 Actions 运行链接存在 GitHub 上，没有归档到仓库内 |
+| 2 | CI 记录 | PASS | `.github/workflows/container-ci.yml`、`evidence/2026-11-18-ci-run/00-capture.txt` | 运行 #11 结论 Success，总耗时 39s，镜像 tag 与提交一致；构建 job 的分步耗时未记录 |
 | 3 | 观测面板 | PASS | `k8s/grafana.yaml`、`scripts/check-consistency.ps1` | 七块面板，口径与 SLO 一致；检查脚本确认加载 7 块 |
 | 4 | SLO 与实测 | PASS | `docs/slo.md`、`scripts/slo-report.ps1`、`evidence/2026-11-16-1337-load/` | 两条 SLO 有公式、有窗口、有 1200 次长测、有 Wilson 区间 |
 | 5 | 演练记录 ×3 | PASS | `docs/drill-2026-11-16-redis-down.md`、`docs/drill-2026-11-18-pod-delete.md`、`docs/drill-2026-11-18-scale-zero.md` | 三场都有时间线与计时，依赖故障做了改进前后对比 |
@@ -19,13 +19,13 @@
 
 ## 二、结论
 
-**有条件可交付。**
+**可交付。**
 
-条件有三条，都属于"说清楚"而不是"补功能"：
+七类材料全部通过。三条使用条件仍然成立，它们不是缺陷，是口径要求：
 
 1. **所有量化数字必须与限定词一起出现**：单节点、本地 Docker Desktop、非高可用、Redis 单副本无持久化、告警无通知渠道。单独引用"MTTD 89 秒"而不带这些限定，就是夸大。
-2. **耗时的口径必须写明**：7.8 秒重建不含镜像拉取；89 秒和 110 秒是"规则变红"的时间，不是"人收到消息"的时间。
-3. **CI 记录需要补一次归档**：把 Actions 的运行链接和耗时写进 `evidence/`，否则第 2 类只能算 PARTIAL。
+2. **耗时的口径必须写明**：7.8 秒重建不含镜像拉取，39 秒 CI 是托管 runner 上的整次运行，89 秒和 110 秒是"规则变红"的时间而不是"人收到消息"的时间。
+3. **版本差异要能解释**：集群当前运行 77481d1fab6e，仓库 HEAD 已前进到 c8200ae，这是刻意的版本固定，不是漂移。
 
 ## 三、不构成交付缺陷、但必须知道的限制
 

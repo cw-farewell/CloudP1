@@ -1,0 +1,10 @@
+﻿capture_time   : 2026-11-18 13:27:59 +08:00
+commit         : c8200ae9af81
+workflow       : Container CI
+run_number     : #11
+conclusion     : Success
+total_duration : 39s
+build_duration : 未单独记录
+image_tag      : c8200ae9af81
+run_url        : https://github.com/cw-farewell/CloudP1/commit/c8200ae9af81/checks
+note           : 数据来自 GitHub Actions 页面，托管 runner 上测得，不是本机测量；39s 是页面顶部的 total duration，含两个 job
