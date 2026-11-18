@@ -1,0 +1,7 @@
+﻿capture_time : 2026-11-18 09:48:04 +08:00
+context      : docker-desktop
+scenario     : 删除一个 API Pod，用集群内探针观测
+probe        : curlimages/curl，每秒 GET /todos
+victim_pod   : todo-api-77fd4c7675-69v62
+inject_time  : 09:46:48
+note         : 第一次尝试用 kubectl port-forward 探测，Pod 被删时隧道断开，导致误判为 39 次失败
